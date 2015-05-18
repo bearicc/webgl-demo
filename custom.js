@@ -6,10 +6,14 @@ var gl;
 var g_texture;
 var triangleVertexBuffer;
 var cubeVertexBuffer;
-var g_model = {};
+var g_models = [];
+var g_camera;
 
-function model() {
-    this.mvMatrix = [];
+function Model() {
+    this.mvMatrix = mat4.identity(mat4.create());
+    this.attriArray = [];
+    this.attriIndex = [];
+    this.vertices = [];
 }
 
 function initGL(canvas) {
@@ -125,34 +129,9 @@ function initTexture() {
     g_texture.image.src = "sample.png";
 }
 
-var mvMatrix = [];
-for (var i = 0; i < 2; i++) {
-    mvMatrix.push(mat4.create());
-    mat4.identity(mvMatrix[i]);
-}
-mat4.translate(mvMatrix[1], mvMatrix[1], [0.0, 0.0, -5.0]);
-mat4.rotate(mvMatrix[1], mvMatrix[1], 210/180*Math.PI, [1.0, 0.0, 0.0]);
 var pMatrix = mat4.create();
 
-function setMatrixUniforms(id) {
-    gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
-    gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix[id]);
-}
-
-
-
 function initBuffers() {
-    triangleVertexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexBuffer);
-    var vertices = [
-        0.0,  1.0, 0.0, 1.0, 0.0, 0.0,
-        -1.0, -1.0, 0.0, 0.0, 1.0, 0.0,
-        1.0, -1.0, 0.0, 0.0, 0.0, 1.0
-    ];
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    triangleVertexBuffer.itemSize = 6;
-    triangleVertexBuffer.numItems = 3;
-
     cubeVertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
     var cube_vertices = [
@@ -216,7 +195,7 @@ function initBuffers() {
         6, 7, 10, 10, 9, 6,
         7, 8, 11, 11, 10, 7
     ];
-    vertices = new Array(36);
+    var vertices = new Array(36);
     for (var i = 0; i < vertices.size; i++) {
         vertices[i] = new Array(6);
     }
@@ -243,12 +222,13 @@ function drawScene() {
 
     mat4.perspective(pMatrix, 45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0);
     var step = Float32Array.BYTES_PER_ELEMENT;
-    mat4.rotate(mvMatrix[1], mvMatrix[1], 1.0/180*Math.PI, [0.0, 1.0, 0.0]);
+    mat4.rotate(g_models[0].mvMatrix, g_models[0].mvMatrix, 1.0/180*Math.PI, [0.0, 1.0, 0.0]);
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexBuffer);
     gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 3, gl.FLOAT, false, 8*step, 0);
     gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 3, gl.FLOAT, false, 8*step, 3*step);
     gl.vertexAttribPointer(shaderProgram.vertexTexAttribute, 2, gl.FLOAT, false, 8*step, 6*step);
-    setMatrixUniforms(1);
+    gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+    gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, g_models[0].mvMatrix);
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, g_texture);
@@ -268,6 +248,11 @@ function webGLStart() {
     initShaders();
     initBuffers();
     initTexture();
+
+    var cube = new Model();
+    mat4.translate(cube.mvMatrix, cube.mvMatrix, [0.0, 0.0, -5.0]);
+    mat4.rotate(cube.mvMatrix, cube.mvMatrix, 210/180*Math.PI, [1.0, 0.0, 0.0]);
+    g_models.push(cube);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
